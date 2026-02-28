@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Jenkins CI Pipeline with Maven and JUnit</title>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            margin: 40px;
+            line-height: 1.6;
+            background: #fafafa;
+            color: #222;
+        }
+        h1, h2, h3 {
+            color: #0b5394;
+        }
+        h1 {
+            border-bottom: 3px solid #0b5394;
+            padding-bottom: 10px;
+        }
+        h2 {
+            border-bottom: 2px solid #ccc;
+            padding-bottom: 6px;
+            margin-top: 40px;
+        }
+        pre {
+            background: #272822;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+        code {
+            background: #f4f4f4;
+            padding: 2px 5px;
+            border-radius: 4px;
+        }
+        .note {
+            background: #e7f3ff;
+            border-left: 5px solid #2196f3;
+            padding: 10px;
+            margin: 15px 0;
+        }
+        .important {
+            background: #fff3cd;
+            border-left: 5px solid #ffc107;
+            padding: 10px;
+            margin: 15px 0;
+        }
+        ul {
+            margin-left: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        table, th, td {
+            border: 1px solid #aaa;
+        }
+        th, td {
+            padding: 10px;
+        }
+        th {
+            background: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Jenkins CI Pipeline with Maven + JUnit</h1>
+
+<p>
+This example demonstrates a <strong>clean Continuous Integration pipeline</strong>
+using <strong>Git, Maven, and JUnit</strong>.
+</p>
+
+<hr>
+
+<h2>1️⃣ What We Are Building (Big Picture)</h2>
+
+<pre>
+Git Repository
+      ↓
+Jenkins
+      ↓
+Maven Compile
+      ↓
+JUnit Tests
+      ↓
+BUILD SUCCESS / FAILURE
+</pre>
+
+<hr>
+
+<h2>Create a Maven Project in VS Code</h2>
+
+<h3>Step 1: Verify JDK and Maven Installation</h3>
+
+<p><b>Verify Java (JDK):</b></p>
+<pre>
+java -version
+javac -version
+</pre>
+
+<p><b>Verify Maven:</b></p>
+<pre>
+mvn -version
+</pre>
+
+<h3>Step 2: Install VS Code Extensions</h3>
+<ul>
+    <li>Open VS Code</li>
+    <li>Go to Extensions (Ctrl + Shift + X)</li>
+    <li>Install <b>Extension Pack for Java</b></li>
+</ul>
+
+<h3>Step 3: Open Project Folder</h3>
+<ul>
+    <li>Open VS Code</li>
+    <li>Click <b>File → Open Folder</b></li>
+    <li>Choose or create a folder (Example: Desktop)</li>
+</ul>
+
+<h3>Step 4: Create a Maven Project</h3>
+<ol>
+    <li>Press <b>Ctrl + Shift + P</b></li>
+    <li>Select <b>Maven: Create Maven Project</b></li>
+    <li>Choose <b>Maven Archetype</b></li>
+    <li>Select <b>maven-archetype-quickstart</b></li>
+    <li>Select the latest version</li>
+</ol>
+
+<h3>Step 5: Enter Project Details</h3>
+
+<table border="1" cellpadding="5">
+    <tr>
+        <th>Field</th>
+        <th>Example</th>
+    </tr>
+    <tr>
+        <td>Group Id</td>
+        <td>com.example</td>
+    </tr>
+    <tr>
+        <td>Artifact Id</td>
+        <td>calculator-app</td>
+    </tr>
+    <tr>
+        <td>Version</td>
+        <td>1.0-SNAPSHOT</td>
+    </tr>
+    <tr>
+        <td>Package</td>
+        <td>com.example</td>
+    </tr>
+</table>
+
+<h3>Step 6: Maven Project Created</h3>
+
+<pre>
+calculator-app/
+├── src/
+│   ├── main/
+│   │   └── java/
+│   │       └── com/example/
+│   │           └── App.java
+│   └── test/
+│       └── java/
+│           └── com/example/
+│               └── AppTest.java
+├── pom.xml
+</pre>
+
+<h3>Step 7: Rename Files</h3>
+<ul>
+    <li>Rename <b>App.java</b> to <b>Calculator.java</b></li>
+    <li>Rename <b>AppTest.java</b> to <b>CalculatorTest.java</b></li>
+</ul>
+
+<h2>2️⃣ Standard Maven Project Structure (Jenkinsfile added)</h2>
+
+<pre>
+calculator-app/
+├── src/
+│   ├── main/
+│   │   └── java/
+│   │       └── com/example/
+│   │           └── Calculator.java
+│   └── test/
+│       └── java/
+│           └── com/example/
+│               └── CalculatorTest.java
+├── pom.xml
+└── Jenkinsfile
+</pre>
+
+<div class="important">
+This is the <strong>standard Maven directory layout</strong>.
+Jenkins and Maven expect this structure.
+</div>
+
+<hr>
+
+<h2>3️⃣ Java Application Code</h2>
+
+<h3><code>src/main/java/Calculator.java</code></h3>
+
+<pre>
+package com.example;
+
+public class Calculator {
+
+    public int add(int a, int b) {
+        return a + b;
+    }
+
+    public int subtract(int a, int b) {
+        return a - b;
+    }
+}
+</pre>
+
+<hr>
+
+<h2>4️⃣ JUnit Test Code</h2>
+
+<h3><code>src/test/java/CalculatorTest.java</code></h3>
+
+<pre>
+package com.example;
+
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+public class CalculatorTest {
+
+    @Test
+    public void testAdd() {
+        Calculator calc = new Calculator();
+        assertEquals(5, calc.add(2, 3));
+    }
+
+    @Test
+    public void testSubtract() {
+        Calculator calc = new Calculator();
+        assertEquals(1, calc.subtract(3, 2));
+    }
+}
+</pre>
+
+<hr>
+
+<h2>5️⃣ Maven Configuration</h2>
+
+<h3><code>pom.xml</code></h3>
+
+<pre>
+&lt;project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             http://maven.apache.org/xsd/maven-4.0.0.xsd"&gt;
+
+    &lt;modelVersion&gt;4.0.0&lt;/modelVersion&gt;
+
+    &lt;groupId&gt;com.example&lt;/groupId&gt;
+    &lt;artifactId&gt;calculator-app&lt;/artifactId&gt;
+    &lt;version&gt;1.0&lt;/version&gt;
+
+    &lt;properties&gt;
+        &lt;maven.compiler.source&gt;21&lt;/maven.compiler.source&gt;
+        &lt;maven.compiler.target&gt;21&lt;/maven.compiler.target&gt;
+    &lt;/properties&gt;
+
+    &lt;dependencies&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.junit&lt;/groupId&gt;
+            &lt;artifactId&gt;junit-bom&lt;/artifactId&gt;
+            &lt;version&gt;5.11.0&lt;/version&gt;
+            &lt;type&gt;pom&lt;/type&gt;
+            &lt;scope&gt;test&lt;/scope&gt;
+        &lt;/dependency&gt;
+    &lt;/dependencies&gt;
+
+&lt;/project&gt;
+</pre>
+
+<div class="note">
+Maven automatically downloads JUnit from Maven Central.
+</div>
+
+<hr>
+
+<h2>6️⃣ Test the Project Locally</h2>
+
+<pre>
+mvn clean test
+</pre>
+
+<p>Expected output:</p>
+
+<pre>
+BUILD SUCCESS
+</pre>
+
+<hr>
+
+<h1>7️⃣ Jenkinsfile — CI Pipeline with Testing</h1>
+
+<h3><code>Jenkinsfile</code> (Project Root)</h3>
+
+<pre>
+pipeline {
+    agent any
+
+    stages {
+
+        stage('Checkout Code') {
+            steps {
+                git 'https://github.com/laxmi916/calculator-app.git'
+            }
+        }
+
+        stage('Build & Test') {
+            steps {
+                sh 'mvn clean test'
+            }
+        }
+
+        stage('Package JAR') {
+            steps {
+                sh 'mvn package'
+            }
+        }
+
+        stage('Install to Local Repo') {
+            steps {
+                sh 'mvn install'
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Library JAR packaged and installed successfully'
+            archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+        }
+        failure {
+            echo 'Build failed'
+        }
+    }
+}
+
+</pre>
+
+<hr>
+
+<h2>8️⃣ Push Project to GitHub</h2>
+
+<pre>
+git init
+git add .
+git commit -m "Calculator app with JUnit tests"
+git branch -M master
+git remote add origin https://github.com/laxmi916/calculator-app.git
+git push -u origin master
+</pre>
+
+<hr>
+
+<h2>9️⃣ Jenkins Job Configuration</h2>
+
+<ul>
+    <li>New Item → Pipeline</li>
+    <li>Definition → Pipeline script from SCM</li>
+    <li>SCM → Git</li>
+    <li>Repository URL → GitHub repository</li>
+    <li>Branch → <code>*/master</code></li>
+    <li>Script Path → <code>Jenkinsfile</code></li>
+</ul>
+
+<hr>
+
+<h2>🔟 What Jenkins Does Automatically</h2>
+
+<ul>
+    <li>Clones code from Git</li>
+    <li>Runs <code>mvn compile</code></li>
+    <li>Runs <code>mvn test</code></li>
+    <li>Executes JUnit test cases</li>
+    <li>Fails the build if any test fails</li>
+</ul>
+
+<hr>
+<h1>Using a JAR Generated by Jenkins CI</h1>
+
+<p>
+This document explains what happens after a successful Jenkins CI build
+and how the generated <strong>library JAR</strong> can be used in practice.
+</p>
+
+<hr>
+
+<h2>What Jenkins Did</h2>
+
+<p>
+During the CI run, Jenkins executed the following Maven command:
+</p>
+
+<pre>mvn install</pre>
+
+<p>
+As a result, the library was installed into the local Maven repository
+of the Jenkins machine at:
+</p>
+
+<pre>/home/laxmi/.m2/repository/com/example/calculator-app/1.0-SNAPSHOT/
+ ├── calculator-app-1.0-SNAPSHOT.jar
+ └── calculator-app-1.0-SNAPSHOT.pom
+</pre>
+
+<div class="note">
+<strong>Important:</strong> This location belongs to the Jenkins node.
+The JAR is not automatically available on other machines.
+</div>
+
+<hr>
+
+<h2>Download JAR from Jenkins UI</h2>
+
+<p>
+Since the JAR was archived, it can be downloaded directly from Jenkins.
+</p>
+
+<ol>
+    <li>Open Jenkins</li>
+    <li>Open the <strong>calculator-app</strong> job</li>
+    <li>Click the <strong>last successful build</strong></li>
+    <li>Click <strong>Artifacts</strong></li>
+    <li>Download <code>calculator-app-1.0-SNAPSHOT.jar</code></li>
+</ol>
+
+<h3>Use the JAR Manually</h3>
+
+<pre>javac -cp calculator-app-1.0-SNAPSHOT.jar DemoApp.java
+java  -cp .:calculator-app-1.0-SNAPSHOT.jar DemoApp</pre>
+
+<hr>
+
+<hr>
+<hr>
+<hr>
+<h2>1️⃣1️⃣ Packaging and Installing the Application</h2>
+
+<p>
+This project is a <strong>library-style application</strong> (no <code>main()</code> method),
+so execution is not required. However, Maven can still package it.
+</p>
+
+<h3>Generate JAR</h3>
+
+<pre>
+mvn clean package
+</pre>
+
+<p>The JAR file will be created at:</p>
+
+<pre>
+target/calculator-app-1.0.jar
+</pre>
+
+<h3>Install to Local Maven Repository</h3>
+
+<pre>
+mvn install
+</pre>
+
+<p>
+This installs the artifact into:
+</p>
+
+<pre>
+~/.m2/repository/com/example/calculator-app/1.0/
+</pre>
+
+<hr>
+
+<h1>Jenkins CI Pipeline for a Maven Library Project</h1>
+
+<p>
+This document explains how a <strong>library-style Maven project</strong>
+(with no <code>main()</code> method) can be built, tested, packaged,
+and installed using <strong>Jenkins Continuous Integration</strong>.
+</p>
+
+<hr>
+
+<h2>Goal of the CI Pipeline</h2>
+
+<p>The Jenkins pipeline performs the following steps:</p>
+
+<ol>
+    <li>Checkout source code from GitHub</li>
+    <li>Compile the source code and run unit tests</li>
+    <li>Package the project into a JAR file</li>
+    <li>Install the JAR into the local Maven repository</li>
+    <li>Optionally archive the JAR for verification</li>
+</ol>
+
+<hr>
+
+<h2>Jenkinsfile (CI for Library Project)</h2>
+
+<pre>pipeline {
+    agent any
+
+    tools {
+        maven 'Maven3'
+        jdk 'JDK21'
+    }
+
+    stages {
+
+        stage('Checkout Code') {
+            steps {
+                git 'https://github.com/laxmi916/calculator-app.git'
+            }
+        }
+
+        stage('Build & Test') {
+            steps {
+                sh 'mvn clean test'
+            }
+        }
+
+        stage('Package JAR') {
+            steps {
+                sh 'mvn package'
+            }
+        }
+
+        stage('Install to Local Repo') {
+            steps {
+                sh 'mvn install'
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Library JAR packaged and installed successfully'
+            archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+        }
+        failure {
+            echo 'Build failed'
+        }
+    }
+}</pre>
+
+<hr>
+
+<h2>Explanation of Each Stage</h2>
+
+<h3>1. Checkout Code</h3>
+<ul>
+    <li>Clones the source code from the GitHub repository.</li>
+    <li>Uses the Jenkins Git plugin.</li>
+</ul>
+
+<h3>2. Build & Test</h3>
+<ul>
+    <li>Compiles Java source code.</li>
+    <li>Runs JUnit test cases.</li>
+    <li>Stops the pipeline if any test fails.</li>
+</ul>
+
+<h3>3. Package JAR</h3>
+<p>
+Creates the library JAR file at:
+</p>
+
+<pre>target/calculator-app-1.0-SNAPSHOT.jar</pre>
+
+<h3>4. Install to Local Maven Repository</h3>
+<p>
+Installs the JAR into the Jenkins node’s local Maven repository:
+</p>
+
+<pre>~/.m2/repository/com/example/calculator-app/1.0-SNAPSHOT/</pre>
+
+<div class="note">
+<strong>Note:</strong> This installation happens on the Jenkins agent machine,
+not on the developer’s local system.
+</div>
+
+<h3>5. Archive Artifacts</h3>
+<ul>
+    <li>Saves the generated JAR in Jenkins build history.</li>
+    <li>Allows downloading the JAR from Jenkins UI.</li>
+    <li>Useful for downstream Jenkins jobs.</li>
+</ul>
+
+<hr>
+
+<h2>Required Jenkins Plugins</h2>
+
+<ul>
+    <li>Pipeline</li>
+    <li>Pipeline: Declarative</li>
+    <li>Git Plugin</li>
+    <li>Maven Integration Plugin</li>
+</ul>
+
+<hr>
+
+<h2>Important CI Note</h2>
+
+<div class="note">
+<code>mvn install</code> installs the artifact only into the
+<strong>local Maven repository of the Jenkins node</strong>.
+This is correct behavior for Continuous Integration.
+</div>
+
+<hr>
+
+<h2>Optional Industry Improvements</h2>
+
+<h3>Combine Build, Test, and Install</h3>
+
+<pre>stage('Build, Test & Install') {
+    steps {
+        sh 'mvn clean install'
+    }
+}</pre>
+
+<h3>Deploy to Artifact Repository</h3>
+
+<p>
+For team or enterprise usage, use:
+</p>
+
+<pre>mvn deploy</pre>
+
+<p>
+to deploy the artifact to <strong>Nexus</strong> or <strong>Artifactory</strong>.
+</p>
+
+<hr>
+
+<div class="success">
+Jenkins can automate Maven goals such as <code>clean</code>, <code>test</code>,
+<code>package</code>, and <code>install</code> to continuously integrate
+a Java library project and make it available in the local Maven repository.
+</div>
+
+<hr>
+
+<h2>Conclusion</h2>
+
+<ul>
+    <li>This Jenkinsfile represents a complete CI pipeline for a Maven library.</li>
+    <li>No application execution is required.</li>
+    <li>The generated JAR can be reused by other Maven projects.</li>
+    <li>The setup is suitable for exams, labs, and real-world CI environments.</li>
+</ul>
+
+<hr>
+<h1>Using a JAR Generated by Jenkins CI</h1>
+
+<p>
+This document explains what happens after a successful Jenkins CI build
+and how the generated <strong>library JAR</strong> can be used in practice.
+</p>
+
+<hr>
+
+<h2>What Jenkins Did</h2>
+
+<p>
+During the CI run, Jenkins executed the following Maven command:
+</p>
+
+<pre>mvn install</pre>
+
+<p>
+As a result, the library was installed into the local Maven repository
+of the Jenkins machine at:
+</p>
+
+<pre>/home/laxmi/.m2/repository/com/example/calculator-app/1.0-SNAPSHOT/
+ ├── calculator-app-1.0-SNAPSHOT.jar
+ └── calculator-app-1.0-SNAPSHOT.pom
+</pre>
+
+<div class="note">
+<strong>Important:</strong> This location belongs to the Jenkins node.
+The JAR is not automatically available on other machines.
+</div>
+
+<hr>
+
+<h2>Way 1: Use the Library in Another Maven Project (Most Common)</h2>
+
+<h3>Step 1: Create a Client Maven Project</h3>
+<p>
+Create another Maven project, for example:
+</p>
+
+<pre>calculator-client</pre>
+
+<h3>Step 2: Add Dependency in pom.xml</h3>
+
+<pre>&lt;dependency&gt;
+    &lt;groupId&gt;com.example&lt;/groupId&gt;
+    &lt;artifactId&gt;calculator-app&lt;/artifactId&gt;
+    &lt;version&gt;1.0-SNAPSHOT&lt;/version&gt;
+&lt;/dependency&gt;</pre>
+
+<h3>Step 3: Use the Library in Java Code</h3>
+
+<pre>import com.example.Calculator;
+
+public class ClientApp {
+    public static void main(String[] args) {
+        Calculator c = new Calculator();
+        System.out.println(c.add(10, 20));
+        System.out.println(c.subtract(50, 30));
+    }
+}</pre>
+
+<h3>Step 4: Build the Client Project</h3>
+
+<pre>mvn clean compile</pre>
+
+<div class="success">
+Maven automatically resolves the dependency from the local repository
+(<code>.m2</code>).
+</div>
+
+
+<hr>
+
+<h2>Way 2: Download JAR from Jenkins UI</h2>
+
+<p>
+Since the JAR was archived, it can be downloaded directly from Jenkins.
+</p>
+
+<ol>
+    <li>Open Jenkins</li>
+    <li>Open the <strong>calculator-app</strong> job</li>
+    <li>Click the <strong>last successful build</strong></li>
+    <li>Click <strong>Artifacts</strong></li>
+    <li>Download <code>calculator-app-1.0-SNAPSHOT.jar</code></li>
+</ol>
+
+<h3>Use the JAR Manually</h3>
+
+<pre>javac -cp calculator-app-1.0-SNAPSHOT.jar DemoApp.java
+java  -cp .:calculator-app-1.0-SNAPSHOT.jar DemoApp</pre>
+
+<hr>
+
+<h2>Way 3: Use the Library in Another Jenkins Job (CI Chaining)</h2>
+
+<p>
+Another Jenkins job can directly use this library from the local Maven repository.
+</p>
+
+<h3>Example Jenkinsfile (Client Job)</h3>
+
+<pre>pipeline {
+    agent any
+
+    tools {
+        maven 'Maven3'
+        jdk 'JDK21'
+    }
+
+    stages {
+        stage('Build Client App') {
+            steps {
+                sh 'mvn clean compile'
+            }
+        }
+    }
+}</pre>
+
+<div class="success">
+The second job automatically picks the library from <code>.m2</code>.
+</div>
+
+<hr>
+
+<h2>Important Real-World Note</h2>
+
+<div class="note">
+The command <code>mvn install</code> is intended only for local usage.
+It is not suitable for sharing artifacts across teams or organizations.
+</div>
+
+<h3>Correct Approach for Team Sharing</h3>
+
+<pre>mvn deploy</pre>
+
+<p>
+This deploys the artifact to a remote repository such as
+<strong>Nexus</strong> or <strong>Artifactory</strong>.
+</p>
+
+<hr>
+
+<h2>Conclusion</h2>
+
+<ul>
+    <li>A successful Jenkins CI run produces a reusable library JAR.</li>
+    <li>The JAR can be consumed by Maven projects, Jenkins jobs, or manually.</li>
+    <li>For enterprise usage, artifacts should be deployed to a remote repository.</li>
+</ul>
+
+
+</body>
+</html>
